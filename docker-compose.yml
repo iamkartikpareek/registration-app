@@ -1,20 +1,37 @@
 services:
-
   mysql:
     image: mysql:8.0
     container_name: registration-mysql
-
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: registration_db
-      MYSQL_USER: registration_user
-      MYSQL_PASSWORD: registration_password
-
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-password}
+      MYSQL_DATABASE: ${DB_NAME:-registration_db}
+      MYSQL_USER: ${DB_USER:-registration_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-local-registration-password}
     ports:
       - "3306:3306"
-
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: registration-app:local
+    container_name: registration-app
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-registration_db}
+      DB_USER: ${DB_USER:-registration_user}
+      DB_PASSWORD: ${DB_PASSWORD:-local-registration-password}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:
